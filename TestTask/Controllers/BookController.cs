@@ -6,7 +6,7 @@ using TestTask.Data;
 using Microsoft.EntityFrameworkCore;
 using TestTask;
 
-namespace BookManagement.Controllers
+namespace TestTask.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
@@ -37,16 +37,30 @@ namespace BookManagement.Controllers
         }
 
         [HttpPost]
-        public async Task<ActionResult<Book>> CreateBook(Book book)
+        public async Task<Book> Add(Book book)
         {
-            var createdBook = await _bookService.Add(book);
-            return CreatedAtAction(nameof(GetBook), new { id = createdBook.Id }, createdBook);
+            var existingAuthor = await _context.Authors
+                .FirstOrDefaultAsync(a => a.Name.ToLower() == book.Authors.Name.ToLower());
+
+            if (existingAuthor != null)
+            {
+                book.AuthorId = existingAuthor.Id;
+                book.Authors = existingAuthor;
+            }
+            else
+            {
+                _context.Authors.Add(book.Authors);
+                await _context.SaveChangesAsync();
+            }
+
+            _context.Books.Add(book);
+            await _context.SaveChangesAsync();
+
+            return book;
         }
 
         [HttpPut("{id}")]
-        public async Task<ActionResult<UpdateBookDto>> UpdateBookAsync(
-    [FromRoute] int id,
-    [FromBody] UpdateBookDto bookDto)
+        public async Task<ActionResult<UpdateBookDto>> UpdateBookAsync(int id, UpdateBookDto bookDto)
         {
             var existingBook = await _context.Books
                 .Include(b => b.Authors)
