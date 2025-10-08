@@ -57,9 +57,6 @@ namespace TestTask.Repositories
 
         public async Task<IEnumerable<Book>> GetByAuthor(string authorName)
         {
-            // SQL: SELECT b.* FROM Books b 
-            //      JOIN Authors a ON b.AuthorId = a.Id 
-            //      WHERE a.Name LIKE '%@authorName%'
             return await _context.Books
                 .Include(b => b.Authors)
                 .Where(b => b.Authors.Name.Contains(authorName))

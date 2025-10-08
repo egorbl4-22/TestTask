@@ -104,12 +104,5 @@ namespace BookManagement.Controllers
             var stats = await _bookService.GetReadingStats();
             return Ok(stats);
         }
-
-        [HttpGet("author/{authorName}")]
-        public async Task<ActionResult<IEnumerable<Book>>> GetBooksByAuthor(string authorName)
-        {
-            var books = await _bookService.GetByAuthor(authorName);
-            return Ok(books);
-        }
     }
 }
