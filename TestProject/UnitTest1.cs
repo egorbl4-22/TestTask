@@ -13,17 +13,6 @@ namespace TestTask.Tests
         private readonly Context _context;
         private readonly BookService _bookService;
 
-        public BookServiceTests()
-        {
-            var options = new DbContextOptionsBuilder<Context>()
-                .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
-                .Options;
-
-            _context = new Context(options);
-            var bookRepository = new BookRepository(_context);
-            _bookService = new BookService(bookRepository, _context);
-        }
-
         [Fact]
         public async Task CreateBookAsync_ShouldCreateNewBook()
         {
