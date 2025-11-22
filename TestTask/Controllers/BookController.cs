@@ -1,6 +1,7 @@
 ﻿using TestTask.Models;
 using TestTask.Services;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 using TestTask.Interfaces;
 using TestTask.Data;
 using Microsoft.EntityFrameworkCore;
@@ -10,15 +11,16 @@ namespace TestTask.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
+    [Authorize]
     public class BooksController : ControllerBase
     {
         private readonly IBookService _bookService;
-        private readonly Context _context;
 
-        public BooksController(IBookService bookService, Context context)
+
+        public BooksController(IBookService bookService)
         {
             _bookService = bookService;
-            _context = context;
+
         }
 
         [HttpGet]
@@ -37,72 +39,74 @@ namespace TestTask.Controllers
         }
 
         [HttpPost]
-        public async Task<Book> Add(Book book)
+        public async Task<ActionResult<UpdateBookDto>> Add(UpdateBookDto bookDto)
         {
-            var existingAuthor = await _context.Authors
-                .FirstOrDefaultAsync(a => a.Name.ToLower() == book.Authors.Name.ToLower());
 
-            if (existingAuthor != null)
+            var book = new Book
             {
-                book.AuthorId = existingAuthor.Id;
-                book.Authors = existingAuthor;
-            }
-            else
-            {
-                _context.Authors.Add(book.Authors);
-                await _context.SaveChangesAsync();
-            }
+                Title = bookDto.Title,
+                Year = bookDto.Year,
+                Genre = bookDto.Genre,
+                IsRead = bookDto.IsRead,
+                Authors = new Author
+                {
+                    Name = bookDto.Author.Name,
+                    Country = bookDto.Author.Country
+                }
+            };
 
-            _context.Books.Add(book);
-            await _context.SaveChangesAsync();
+            var createdBook = await _bookService.Add(book);
 
-            return book;
-        }
+            // Возвращаем DTO вместо Entity
+            var result = new UpdateBookDto
+                {
+                    Title = createdBook.Title,
+                    Genre = createdBook.Genre,
+                    Year = createdBook.Year,
+                    IsRead = createdBook.IsRead,
+                    Author = new AuthorDto
+                    {
+                        Name = createdBook.Authors.Name,
+                        Country = createdBook.Authors.Country
+                    }
+                };
+
+                return Ok(result);
+            }
+                 
 
         [HttpPut("{id}")]
         public async Task<ActionResult<UpdateBookDto>> UpdateBookAsync(int id, UpdateBookDto bookDto)
         {
-            var existingBook = await _context.Books
-                .Include(b => b.Authors)
-                .FirstOrDefaultAsync(b => b.Id == id);
 
-            if (existingBook == null)
-                return NotFound("Книга не найдена");
+                var existingBook = await _bookService.GetById(id);
+                if (existingBook == null)
+                    return NotFound("Книга не найдена");
 
-            var author = await _context.Authors
-                .FirstOrDefaultAsync(a => a.Name == bookDto.Author.Name);
+                existingBook.Title = bookDto.Title;
+                existingBook.Year = bookDto.Year;
+                existingBook.Genre = bookDto.Genre;
+                existingBook.IsRead = bookDto.IsRead;
 
-            if (author == null)
-                return NotFound("Автор не найден");
+                var updatedBook = await _bookService.Update(existingBook);
 
-            // Обновляем книгу
-            existingBook.Title = bookDto.Title;
-            existingBook.Year = bookDto.Year;
-            existingBook.Genre = bookDto.Genre;
-            existingBook.IsRead = bookDto.IsRead;
-            existingBook.AuthorId = author.Id;
-
-            // Обновляем автора
-            author.Name = bookDto.Author.Name;
-            author.Country = bookDto.Author.Country;
-
-            await _context.SaveChangesAsync();
-
-            var result = new UpdateBookDto
-            {
-                Title = existingBook.Title,
-                Genre = existingBook.Genre,
-                Year = bookDto.Year,
-                IsRead = existingBook.IsRead,
-                Author = new AuthorDto
+                // Возвращаем DTO
+                var result = new UpdateBookDto
                 {
-                    Name = author.Name,
-                    Country = author.Country
-                }
-            };
+                    Title = updatedBook.Title,
+                    Genre = updatedBook.Genre,
+                    Year = updatedBook.Year,
+                    IsRead = updatedBook.IsRead,
+                    Author = new AuthorDto
+                    {
+                        Name = updatedBook.Authors.Name,
+                        Country = updatedBook.Authors.Country
+                    }
+                };
 
-            return Ok(result);
-        }
+                return Ok(result);
+            }
+
 
         [HttpDelete("{id}")]
         public async Task<ActionResult> DeleteBook(int id)

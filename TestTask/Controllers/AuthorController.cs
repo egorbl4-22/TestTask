@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 using TestTask.Data;
 using TestTask.Interfaces;
 using TestTask.Models;
@@ -8,6 +9,7 @@ namespace TestTask.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
+    [Authorize]
     public class AuthorController: ControllerBase
     {
         private readonly IBookService _bookService;

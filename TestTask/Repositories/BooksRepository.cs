@@ -9,7 +9,6 @@ namespace TestTask.Repositories
     public class BookRepository : IBookRepository
     {
         private readonly Context _context;
-
         public BookRepository(Context context)
         {
             _context = context;
@@ -50,10 +49,12 @@ namespace TestTask.Repositories
             var book = await _context.Books.FindAsync(id);
             if (book == null) return false;
 
+            var books = await _context.Books.ToListAsync();
             _context.Books.Remove(book);
             await _context.SaveChangesAsync();
-            return true;
+                return true;
         }
+            
 
         public async Task<IEnumerable<Book>> GetByAuthor(string authorName)
         {
@@ -61,6 +62,38 @@ namespace TestTask.Repositories
                 .Include(b => b.Authors)
                 .Where(b => b.Authors.Name.Contains(authorName))
                 .ToListAsync();
+        }
+
+        public async Task<ReadingStats> GetReadingStats()
+        {
+
+            /* SQL: SELECT 
+                     COUNT(*) as TotalBooks,
+                     SUM(CASE WHEN IsRead = 1 THEN 1 ELSE 0 END) as ReadBooks,
+                     SUM(CASE WHEN IsRead = 0 THEN 1 ELSE 0 END) as UnreadBooks
+                 FROM Books
+            */
+
+            var stats = new
+            {
+                TotalBooks = await _context.Books.CountAsync(),
+                ReadBooks = await _context.Books.CountAsync(b => b.IsRead),
+                UnreadBooks = await _context.Books.CountAsync(b => !b.IsRead)
+            };
+
+            if (stats == null)
+            {
+                return new ReadingStats();
+            }
+
+            return new ReadingStats
+            {
+                TotalBooks = stats.TotalBooks,
+                ReadBooks = stats.ReadBooks,
+                UnreadBooks = stats.UnreadBooks,
+                ReadPercentage = stats.TotalBooks > 0 ?
+                    Math.Round((double)stats.ReadBooks / stats.TotalBooks * 100, 2) : 0
+            };
         }
     }
 }
